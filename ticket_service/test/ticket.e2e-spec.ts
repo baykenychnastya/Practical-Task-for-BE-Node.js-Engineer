@@ -1,14 +1,57 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AppModule } from '../src/app.module';
 import * as request from 'supertest';
+import { TicketService } from '../src/ticket/services/ticket.services';
+import { TicketEventsService } from '../src/ticket/services/ticket.events.service';
+import { TicketResolver } from '../src/ticket/resolvers/ticket.resolver';
+import { AppModule } from '../src/app.module';
+import { GraphQLModule } from '@nestjs/graphql';
+import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 
 describe('TicketResolver (e2e)', () => {
   let app;
   const eventId = 1195;
+  const mockTicketEventsService: TicketEventsService = {
+    getEvents: jest.fn().mockResolvedValue([
+      [
+        {
+          SectionId: 1,
+          SeatRow: 'A',
+          SeatNumber: 101,
+          ZoneId: 100,
+          SeatStatusId: 0,
+        },
+      ],
+      [
+        {
+          Price: 50,
+          ZoneId: 100,
+          PerformanceId: 0,
+        },
+        {
+          Price: 550,
+          ZoneId: 100,
+          PerformanceId: 10,
+        },
+      ],
+    ]),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [
+        GraphQLModule.forRoot<ApolloDriverConfig>({
+          driver: ApolloDriver,
+          autoSchemaFile: true,
+        }),
+      ],
+      providers: [
+        TicketResolver,
+        TicketService,
+        {
+          provide: TicketEventsService,
+          useValue: mockTicketEventsService,
+        },
+      ],
     }).compile();
 
     app = moduleFixture.createNestApplication();
@@ -38,10 +81,10 @@ describe('TicketResolver (e2e)', () => {
       data: {
         getTickets: expect.arrayContaining([
           {
-            section: expect.any(Number),
-            row: expect.any(String),
-            seatNumber: expect.any(Number),
-            price: expect.any(Number),
+            section: 1,
+            row: 'A',
+            seatNumber: 101,
+            price: 50,
           },
         ]),
       },
